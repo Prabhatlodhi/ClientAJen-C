@@ -26,8 +26,9 @@ A comprehensive Node.js REST API with JWT authentication for managing Agencies a
 
 - 🔐 **JWT Token-based Authentication**
 - 🏢 **Agency Management** with complete CRUD operations
-- 👥 **Client Management** linked to agencies
+- 👥 **Client Management** with support for multiple clients per agency
 - 📊 **Advanced Queries** (Top clients with maximum bills)
+- 🚀 **Bulk Operations** (Create agency with multiple clients in single request)
 - ✅ **Input Validation** with comprehensive error handling
 - 🛡️ **Security** with bcrypt, helmet, and CORS
 - 📝 **Request Logging** with Morgan
@@ -77,7 +78,7 @@ curl -X GET https://clientajen-c.onrender.com/api/agencies/top-clients \
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| `POST` | `/api/agencies/create-with-client` | Create agency + client | ✅ |
+| `POST` | `/api/agencies/create-with-client` | Create agency + multiple clients | ✅ |
 | `GET` | `/api/agencies/top-clients` | Get top clients by bill | ✅ |
 
 ### 👥 Clients
@@ -134,7 +135,7 @@ curl -X GET https://clientajen-c.onrender.com/api/agencies/top-clients \
 }
 ```
 
-### 🏢📊 Combined Agency + Client Payload
+### 🏢📊 Agency + Multiple Clients Payload
 ```json
 {
   "agency": {
@@ -146,13 +147,22 @@ curl -X GET https://clientajen-c.onrender.com/api/agencies/top-clients \
     "city": "Mumbai",
     "phoneNumber": "9876543210"
   },
-  "client": {
-    "clientId": "CL001",
-    "name": "Rajesh Kumar",
-    "email": "rajesh@example.com",
-    "phoneNumber": "9876543211",
-    "totalBill": 25000
-  }
+  "clients": [
+    {
+      "clientId": "CL001",
+      "name": "Rajesh Kumar",
+      "email": "rajesh@example.com",
+      "phoneNumber": "9876543211",
+      "totalBill": 25000
+    },
+    {
+      "clientId": "CL002",
+      "name": "Priya Sharma",
+      "email": "priya@example.com",
+      "phoneNumber": "9876543212",
+      "totalBill": 35000
+    }
+  ]
 }
 ```
 
@@ -213,7 +223,7 @@ Content-Type: application/json
 }
 ```
 
-### 3. Create Agency + Client (Single Request) ⭐
+### 3. Create Agency + Multiple Clients (Single Request) ⭐
 ```bash
 POST /api/agencies/create-with-client
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -229,13 +239,29 @@ Content-Type: application/json
     "city": "Bangalore",
     "phoneNumber": "9876543210"
   },
-  "client": {
-    "clientId": "CL001",
-    "name": "Priya Sharma",
-    "email": "priya.sharma@example.com",
-    "phoneNumber": "9876543211",
-    "totalBill": 35000
-  }
+  "clients": [
+    {
+      "clientId": "CL001",
+      "name": "Priya Sharma",
+      "email": "priya.sharma@example.com",
+      "phoneNumber": "9876543211",
+      "totalBill": 35000
+    },
+    {
+      "clientId": "CL002",
+      "name": "Vikram Singh",
+      "email": "vikram.singh@example.com",
+      "phoneNumber": "9876543212",
+      "totalBill": 45000
+    },
+    {
+      "clientId": "CL003",
+      "name": "Anjali Patel",
+      "email": "anjali.patel@example.com",
+      "phoneNumber": "9876543213",
+      "totalBill": 28000
+    }
+  ]
 }
 ```
 
@@ -243,7 +269,7 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "message": "Agency and client created successfully",
+  "message": "Agency and 3 clients created successfully",
   "data": {
     "agency": {
       "agencyId": "AG001",
@@ -255,14 +281,39 @@ Content-Type: application/json
       "phoneNumber": "9876543210",
       "createdAt": "2024-01-15T10:30:00.000Z"
     },
-    "client": {
-      "clientId": "CL001",
-      "agencyId": "AG001",
-      "name": "Priya Sharma",
-      "email": "priya.sharma@example.com",
-      "phoneNumber": "9876543211",
-      "totalBill": 35000,
-      "createdAt": "2024-01-15T10:30:00.000Z"
+    "clients": [
+      {
+        "clientId": "CL001",
+        "agencyId": "AG001",
+        "name": "Priya Sharma",
+        "email": "priya.sharma@example.com",
+        "phoneNumber": "9876543211",
+        "totalBill": 35000,
+        "createdAt": "2024-01-15T10:30:00.000Z"
+      },
+      {
+        "clientId": "CL002",
+        "agencyId": "AG001",
+        "name": "Vikram Singh",
+        "email": "vikram.singh@example.com",
+        "phoneNumber": "9876543212",
+        "totalBill": 45000,
+        "createdAt": "2024-01-15T10:30:00.000Z"
+      },
+      {
+        "clientId": "CL003",
+        "agencyId": "AG001",
+        "name": "Anjali Patel",
+        "email": "anjali.patel@example.com",
+        "phoneNumber": "9876543213",
+        "totalBill": 28000,
+        "createdAt": "2024-01-15T10:30:00.000Z"
+      }
+    ],
+    "summary": {
+      "totalClients": 3,
+      "totalBusinessValue": 108000,
+      "averageClientValue": 36000
     }
   }
 }
@@ -607,12 +658,12 @@ curl -X POST https://clientajen-c.onrender.com/api/auth/login \
   -d '{"email": "test@example.com", "password": "password123"}'
 ```
 
-4. **Create Agency + Client**
+4. **Create Agency + Multiple Clients**
 ```bash
 curl -X POST https://clientajen-c.onrender.com/api/agencies/create-with-client \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{"agency": {"agencyId": "AG001", "name": "Test Agency", "address1": "123 St", "state": "MH", "city": "Mumbai", "phoneNumber": "1234567890"}, "client": {"clientId": "CL001", "name": "Test Client", "email": "client@test.com", "phoneNumber": "9876543210", "totalBill": 15000}}'
+  -d '{"agency": {"agencyId": "AG001", "name": "Test Agency", "address1": "123 St", "state": "MH", "city": "Mumbai", "phoneNumber": "1234567890"}, "clients": [{"clientId": "CL001", "name": "Test Client 1", "email": "client1@test.com", "phoneNumber": "9876543210", "totalBill": 15000}, {"clientId": "CL002", "name": "Test Client 2", "email": "client2@test.com", "phoneNumber": "9876543211", "totalBill": 25000}]}'
 ```
 
 5. **Update Client**
