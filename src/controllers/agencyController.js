@@ -1,10 +1,19 @@
 const Agency = require('../models/Agency');
 const Client = require('../models/Client');
 
-// API 1: Create agency and client in single request
+ 
+// API 1: Create agency with multiple clients in single request
 const createAgencyWithClient = async (req, res) => {
   try {
-    const { agency, client } = req.body;
+    const { agency, clients } = req.body;
+
+    // Validate clients array
+    if (!clients || !Array.isArray(clients) || clients.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Clients array is required and must contain at least one client'
+      });
+    }
 
     // Check if agency already exists
     const existingAgency = await Agency.findOne({ agencyId: agency.agencyId });
@@ -15,38 +24,67 @@ const createAgencyWithClient = async (req, res) => {
       });
     }
 
-    // Check if client already exists
-    const existingClient = await Client.findOne({ clientId: client.clientId });
-    if (existingClient) {
+    // Check if any client IDs already exist
+    const clientIds = clients.map(client => client.clientId);
+    const existingClients = await Client.find({ clientId: { $in: clientIds } });
+    if (existingClients.length > 0) {
+      const duplicateIds = existingClients.map(client => client.clientId);
       return res.status(400).json({
         success: false,
-        message: 'Client with this ID already exists'
+        message: `Client IDs already exist: ${duplicateIds.join(', ')}`
       });
     }
 
-    // Create agency
+    // Check for duplicate client IDs within the request
+    const uniqueClientIds = new Set(clientIds);
+    if (uniqueClientIds.size !== clientIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Duplicate client IDs found in request'
+      });
+    }
+
+    // Create agency first
     const newAgency = new Agency(agency);
     await newAgency.save();
 
-    // Create client with agency reference
-    const newClient = new Client({
+    // Create all clients with agency reference
+    const clientsData = clients.map(client => ({
       ...client,
       agencyId: agency.agencyId
-    });
-    await newClient.save();
+    }));
+
+    const newClients = await Client.insertMany(clientsData);
+
+    // Calculate summary
+    const totalBusiness = newClients.reduce((sum, client) => sum + client.totalBill, 0);
 
     res.status(201).json({
       success: true,
-      message: 'Agency and client created successfully',
+      message: `Agency and ${newClients.length} clients created successfully`,
       data: {
         agency: newAgency,
-        client: newClient
+        clients: newClients,
+        summary: {
+          totalClients: newClients.length,
+          totalBusinessValue: totalBusiness,
+          averageClientValue: Math.round(totalBusiness / newClients.length)
+        }
       }
     });
   } catch (error) {
+    // Rollback agency if clients failed
+    if (req.body.agency?.agencyId) {
+      try {
+        await Agency.deleteOne({ agencyId: req.body.agency.agencyId });
+      } catch (rollbackError) {
+        console.error('Rollback failed:', rollbackError);
+      }
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Failed to create agency and client',
+      message: 'Failed to create agency and clients',
       error: error.message
     });
   }
